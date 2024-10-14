@@ -10,3 +10,4 @@ toml = "0.8.19"
 serde = { version = "1.0", features = ["derive"] }
 tera = "1.20.0"
 keratin = "0.3.0"
+chrono = "0.4.38"

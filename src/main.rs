@@ -6,6 +6,7 @@ use clap::{Parser, Subcommand};
 use serde::{Serialize, Deserialize};
 use markdown::to_html;
 use tera::Tera;
+use chrono::{DateTime, Utc};
 
 
 #[derive(Parser)]
@@ -26,6 +27,8 @@ enum Action {
     Publish {
         #[arg(short, long)]
         all: bool,
+        #[arg(short, long)]
+        overwrite: bool,
         file_name: Option<String>,
     },
     UpdateIndex,
@@ -63,7 +66,7 @@ fn main() {
             let _file = File::create_new(&new_file_path).unwrap();
             Command::new("nvim").arg(&new_file_path).status().unwrap();
         },
-        Some(Action::Publish { all, file_name }) => {
+        Some(Action::Publish { all, file_name, overwrite }) => {
             if *all {
                 unimplemented!()
             } else {
@@ -78,22 +81,36 @@ fn main() {
 
                 let tera = Tera::new(config.template_path.as_path().to_str().unwrap()).unwrap();
                 let mut context = tera::Context::new();
-
+                
+                let now: DateTime<Utc> = Utc::now();
+                context.insert("date", &now.to_rfc2822());
 
                 context.insert("post", &html);
                 let render = tera.render("post.html.tera", &context).unwrap();
 
-                let mut html_file = File::create_new(htmlfile_path).unwrap();
-                html_file.write_all(render.as_bytes()).unwrap();
+                if *overwrite {
+                    let mut html_file = File::create(htmlfile_path).unwrap();
+                    html_file.write_all(render.as_bytes()).unwrap();
+                } else {
+                    let mut html_file = File::create_new(htmlfile_path).unwrap();
+                    html_file.write_all(render.as_bytes()).unwrap();
+                }
             }
         },
         UpdateIndex => {
             let tera = Tera::new(config.template_path.as_path().to_str().unwrap()).unwrap();
             let mut context = tera::Context::new();
-            //
-            let entries = fs::read_dir(html_storage).unwrap()
+            
+            let mut entries = fs::read_dir(html_storage).unwrap()
                 .map(|res| res.map(|e| e.path()))
                 .collect::<Result<Vec<_>, io::Error>>().unwrap();
+
+            entries.sort_by_key(|path| {
+                fs::metadata(path)
+                    .and_then(|metadata| metadata.created())
+                    .unwrap_or_else(|_| std::time::SystemTime::UNIX_EPOCH) // Fallback if creation time is not available.
+            });
+            entries.reverse();
 
             #[derive(Serialize, Deserialize)]
             struct Entry {
