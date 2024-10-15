@@ -8,20 +8,17 @@ use convert::*;
 use fs_utils::*;
 use render::RenderEngine;
 
-use std::{fs::{self, File}, io::{Read, Write}, path::PathBuf};
+use std::{fs::File, io::Read};
 use std::process::Command;
-use std::io;
 
 use clap::{Parser, Subcommand};
-use serde::{Serialize, Deserialize};
-use chrono::{DateTime, Utc};
-use tera::Tera;
+use serde::Deserialize;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 struct Cli {
     #[arg(short, long, value_name = "FILE")]
-    pub config: Option<PathBuf>,
+    pub config: Option<String>,
 
     #[command(subcommand)]
     pub action: Option<Action>,
@@ -71,7 +68,7 @@ fn main() {
             Command::new("nvim").arg(&new_file_path).status().unwrap();
         },
         Some(Action::Publish { all, file_name, overwrite }) => {
-            let catalogue = Catalogue::new_from_config(&config);
+            let _catalogue = Catalogue::new_from_config(&config);
             let render_engine = RenderEngine::new_from_config(&config);
 
             if *all {

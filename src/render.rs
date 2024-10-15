@@ -1,4 +1,3 @@
-use serde::{Serialize, Deserialize};
 use chrono::{DateTime, Utc};
 use tera::Tera;
 

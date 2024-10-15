@@ -1,7 +1,7 @@
 use crate::ConfigFile;
 
 use std::collections::HashMap;
-use std::{fs::{self, File}, io::{Read, Write}, path::PathBuf};
+use std::fs::{self};
 
 use serde::{Serialize, Deserialize};
 
