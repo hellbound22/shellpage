@@ -1,7 +1,13 @@
 [package]
 name = "shellpage"
+description = "Tool for conversion of markdown to html and quick blog setup"
+repository = "https://github.com/hellbound22/shellpage"
+authors = ["Rodrigo Mauricio <rodrigomauricio@protonmail.com>"]
 version = "0.1.0"
 edition = "2021"
+licence = "MIT"
+keywords = ["blog", "markdown", "html"]
+categories = ["web-programming"]
 exclude = ["config.toml"]
 
 [dependencies]
