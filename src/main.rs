@@ -1,13 +1,21 @@
+mod convert;
+mod fs_utils;
+mod catalogue;
+mod render;
+
+use catalogue::Catalogue;
+use convert::*;
+use fs_utils::*;
+use render::RenderEngine;
+
 use std::{fs::{self, File}, io::{Read, Write}, path::PathBuf};
 use std::process::Command;
 use std::io;
 
 use clap::{Parser, Subcommand};
 use serde::{Serialize, Deserialize};
-use markdown::to_html;
-use tera::Tera;
 use chrono::{DateTime, Utc};
-
+use tera::Tera;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -35,105 +43,64 @@ enum Action {
 }
 
 #[derive(Deserialize)]
-struct Config {
+pub struct ConfigFile {
     pub _sign_name: String,
-    pub _repo_name: String,
-    pub storage: PathBuf,
-    pub template_path: PathBuf,
+    pub repo_path: String,
+    pub md_storage: String,
+    pub html_storage: String,
+    pub template_path: String,
 }
 
 fn main() {
-    let args =  Cli::parse();
+    let args = Cli::parse();
 
     let mut config_contents = String::new();
     let mut config_file = File::open(args.config.as_deref().unwrap()).unwrap();
 
     config_file.read_to_string(&mut config_contents).unwrap();
 
-    let config: Config = toml::from_str(&config_contents).unwrap();
-
-    let mut md_storage = config.storage.clone();
-    md_storage.push("md/");
-    let mut html_storage = config.storage.clone();
-    html_storage.push("html/");
+    let config: ConfigFile = toml::from_str(&config_contents).unwrap();
 
     match &args.action {
         Some(Action::NewPost {file_name}) => {
             let new_file_name = format!("{}.md", file_name);
-            let mut new_file_path = md_storage.clone();
-            new_file_path.push(new_file_name);
+            let mut new_file_path = config.md_storage.clone();
+            new_file_path.push_str(&new_file_name);
             
             let _file = File::create_new(&new_file_path).unwrap();
             Command::new("nvim").arg(&new_file_path).status().unwrap();
         },
         Some(Action::Publish { all, file_name, overwrite }) => {
+            let catalogue = Catalogue::new_from_config(&config);
+            let render_engine = RenderEngine::new_from_config(&config);
+
             if *all {
                 unimplemented!()
             } else {
-                let mut file_contents = String::new();
-                let mdfile_path = format!("{}{}.md", md_storage.as_path().to_str().unwrap(), file_name.as_deref().unwrap());
-                let htmlfile_path = format!("{}{}.html", html_storage.as_path().to_str().unwrap(), file_name.as_deref().unwrap());
-                
-                let mut file = File::open(mdfile_path).unwrap();
-                file.read_to_string(&mut file_contents).unwrap();
+                let file_name = file_name.as_deref().unwrap();
+                let htmlfile_path = format!("{}{}.html", config.html_storage, file_name);
 
-                let html = to_html(&file_contents);
+                //let post = catalogue.get_post(file_name);
 
-                let tera = Tera::new(config.template_path.as_path().to_str().unwrap()).unwrap();
-                let mut context = tera::Context::new();
-                
-                let now: DateTime<Utc> = Utc::now();
-                context.insert("date", &now.to_rfc2822());
+                let html_source = md_to_html(&config, file_name);
 
-                context.insert("post", &html);
-                let render = tera.render("post.html.tera", &context).unwrap();
+                let render = render_engine.post(&html_source);
 
                 if *overwrite {
-                    let mut html_file = File::create(htmlfile_path).unwrap();
-                    html_file.write_all(render.as_bytes()).unwrap();
+                    write_overwrite(&htmlfile_path, &render);
                 } else {
-                    let mut html_file = File::create_new(htmlfile_path).unwrap();
-                    html_file.write_all(render.as_bytes()).unwrap();
+                    write_new(&htmlfile_path, &render);
                 }
             }
         },
         UpdateIndex => {
-            let tera = Tera::new(config.template_path.as_path().to_str().unwrap()).unwrap();
-            let mut context = tera::Context::new();
-            
-            let mut entries = fs::read_dir(html_storage).unwrap()
-                .map(|res| res.map(|e| e.path()))
-                .collect::<Result<Vec<_>, io::Error>>().unwrap();
+            let catalogue = Catalogue::new_from_config(&config);
+            let render_engine = RenderEngine::new_from_config(&config);
 
-            entries.sort_by_key(|path| {
-                fs::metadata(path)
-                    .and_then(|metadata| metadata.created())
-                    .unwrap_or_else(|_| std::time::SystemTime::UNIX_EPOCH) // Fallback if creation time is not available.
-            });
-            entries.reverse();
+            let render = render_engine.index(&catalogue);
 
-            #[derive(Serialize, Deserialize)]
-            struct Entry {
-                path: String,
-                name: String,
-                file_name: String,
-            }
-            
-            let mut posts = Vec::new();
-            for e in entries {
-                posts.push(Entry {
-                    path: e.to_str().unwrap().to_owned(),
-                    name: e.file_stem().unwrap().to_str().unwrap().to_owned(),
-                    file_name: e.file_name().unwrap().to_str().unwrap().to_owned(),
-                })
-            }
-            
-            context.insert("posts", &posts);
-
-            let render = tera.render("index.html.tera", &context).unwrap();
-
-            let mut html_file = File::create(format!("{}index.html", config.storage.as_path().to_str().unwrap())).unwrap();
-            html_file.write_all(render.as_bytes()).unwrap();
+            let index_path = format!("{}index.html", config.repo_path);
+            write_overwrite(&index_path, &render);
         }
         None => unimplemented!()
         
