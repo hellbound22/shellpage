@@ -2,9 +2,11 @@ mod convert;
 mod fs_utils;
 mod catalogue;
 mod render;
+mod errors;
 
 use catalogue::Catalogue;
 use convert::*;
+use errors::ShellpageError;
 use fs_utils::*;
 use render::RenderEngine;
 
@@ -27,7 +29,7 @@ struct Cli {
 #[derive(Subcommand)]
 enum Action {
     NewPost {
-        file_name: String,
+        file_name: Option<String>,
     },
     Publish {
         #[arg(short, long)]
@@ -48,58 +50,66 @@ pub struct ConfigFile {
     pub template_path: String,
 }
 
-fn main() {
+fn main() -> Result<(), ShellpageError> {
     let args = Cli::parse();
 
     let mut config_contents = String::new();
-    let mut config_file = File::open(args.config.as_deref().unwrap()).unwrap();
+    let mut config_file = File::open(args.config.as_deref().unwrap())?;
 
-    config_file.read_to_string(&mut config_contents).unwrap();
+    config_file.read_to_string(&mut config_contents)?;
 
-    let config: ConfigFile = toml::from_str(&config_contents).unwrap();
+    let config: ConfigFile = toml::from_str(&config_contents)?;
+
+    let catalogue = Catalogue::new_from_config(&config);
+    let render_engine = RenderEngine::new_from_config(&config)?;
 
     match &args.action {
         Some(Action::NewPost {file_name}) => {
+            let file_name = if let Some(f) = file_name.as_deref() {
+                f
+            } else {
+                return Err(ShellpageError::RequiredArg("file_name".to_owned()));
+            };
+
             let new_file_name = format!("{}.md", file_name);
             let mut new_file_path = config.md_storage.clone();
             new_file_path.push_str(&new_file_name);
             
-            let _file = File::create_new(&new_file_path).unwrap();
-            Command::new("nvim").arg(&new_file_path).status().unwrap();
+            let _file = File::create_new(&new_file_path)?;
+            Command::new("nvim").arg(&new_file_path).status()?;
         },
         Some(Action::Publish { all, file_name, overwrite }) => {
-            let _catalogue = Catalogue::new_from_config(&config);
-            let render_engine = RenderEngine::new_from_config(&config);
 
             if *all {
                 unimplemented!()
             } else {
-                let file_name = file_name.as_deref().unwrap();
+                let file_name = if let Some(f) = file_name.as_deref() {
+                    f
+                } else {
+                    return Err(ShellpageError::RequiredArg("file_name".to_owned()));
+                };
+
                 let htmlfile_path = format!("{}{}.html", config.html_storage, file_name);
 
-                //let post = catalogue.get_post(file_name);
+                let html_source = md_to_html(&config, file_name)?;
 
-                let html_source = md_to_html(&config, file_name);
-
-                let render = render_engine.post(&html_source);
+                let render = render_engine.post(&html_source)?;
 
                 if *overwrite {
-                    write_overwrite(&htmlfile_path, &render);
+                    write_overwrite(&htmlfile_path, &render)?;
                 } else {
-                    write_new(&htmlfile_path, &render);
+                    write_new(&htmlfile_path, &render)?;
                 }
             }
         },
+        #[allow(unused_variables, non_snake_case)]
         UpdateIndex => {
-            let catalogue = Catalogue::new_from_config(&config);
-            let render_engine = RenderEngine::new_from_config(&config);
-
-            let render = render_engine.index(&catalogue);
+            let render = render_engine.index(&catalogue)?;
 
             let index_path = format!("{}index.html", config.repo_path);
-            write_overwrite(&index_path, &render);
+            write_overwrite(&index_path, &render)?;
         }
-        None => unimplemented!()
-        
     }
+
+    Ok(())
 }

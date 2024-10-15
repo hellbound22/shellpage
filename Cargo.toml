@@ -2,6 +2,7 @@
 name = "shellpage"
 version = "0.1.0"
 edition = "2021"
+exclude = ["config.toml"]
 
 [dependencies]
 markdown = "1.0.0-alpha.21"
@@ -9,5 +10,5 @@ clap = { version = "4.5.20", features = ["derive"] }
 toml = "0.8.19"
 serde = { version = "1.0", features = ["derive"] }
 tera = "1.20.0"
-keratin = "0.3.0"
 chrono = "0.4.38"
+thiserror = "1.0.64"
