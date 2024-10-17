@@ -5,12 +5,12 @@ use std::fs::{self};
 
 use serde::{Serialize, Deserialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Post {
     path: String,
-    name: String,
-    file_name: String,
-    created: std::time::SystemTime,
+    pub name: String,
+    pub file_name: String,
+    pub created: std::time::SystemTime,
 }
 
 pub struct Catalogue {
@@ -20,7 +20,7 @@ pub struct Catalogue {
 impl Catalogue {
     pub fn new_from_config(config: &ConfigFile) -> Self {
         let mut map = HashMap::new();
-        let entries = fs::read_dir(&config.html_storage).unwrap();
+        let entries = fs::read_dir(&config.md_storage).unwrap();
         
         for doc in entries {
             let doc = doc.unwrap().path();
@@ -54,7 +54,11 @@ impl Catalogue {
         list
     }
 
-    pub fn get_post(&self, file_name: &str) -> Post {
-        unimplemented!()
+    pub fn get_post(&self, file_name: &str) -> &Post {
+        self.list.get(file_name).unwrap()
+    }
+
+    pub fn posts_len(&self) -> usize {
+        self.list.len()
     }
 }

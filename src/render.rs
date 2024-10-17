@@ -1,4 +1,6 @@
-use chrono::{DateTime, Utc};
+use std::time::SystemTime;
+
+use chrono::{DateTime, Utc, Local};
 use tera::Tera;
 
 use crate::{catalogue::Catalogue, errors::ShellpageError, ConfigFile};
@@ -32,10 +34,10 @@ impl RenderEngine {
         }
     }
 
-    pub fn post(&self, html_source: &str) -> Result<String, ShellpageError> {
+    pub fn post(&self, html_source: &str, created: &SystemTime) -> Result<String, ShellpageError> {
         let mut context = tera::Context::new();
         
-        let now: DateTime<Utc> = Utc::now();
+        let now: DateTime<Local> = DateTime::from(*created); 
         context.insert("date", &now.to_rfc2822());
 
         context.insert("post", &html_source);

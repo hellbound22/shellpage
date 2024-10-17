@@ -10,8 +10,8 @@ Check out [this repo](https://github.com/hellbound22/blog) to see the results
 # Creates new post and launches editor
 shellpage new-post "BlogPost" -o
 
-# Converts the Markdown files to HTML and apllies templates 
-shellpage publish "BlogPost" 
+# Converts the Markdown files to HTML, apllies templates and updates index 
+shellpage publish --all --overwrite
 
 # Updates index.html with the full list of blog posts
 shellpage update-index
@@ -26,5 +26,6 @@ repo_path = "/home/user/blog/"
 md_storage = "/home/user/blog/md/"
 html_storage = "/home/user/blog/html/"
 template_path = "/home/user/blog/templates/*"
+editor = "nvim"
 ```
 
