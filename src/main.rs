@@ -31,6 +31,8 @@ struct Cli {
 enum Action {
     NewPost {
         file_name: Option<String>,
+        #[arg(short, long, action = clap::ArgAction::SetTrue)]
+        open: bool,
     },
     Publish {
         #[arg(short, long)]
@@ -49,6 +51,7 @@ pub struct ConfigFile {
     pub md_storage: String,
     pub html_storage: String,
     pub template_path: String,
+    pub editor: Option<String>,
 }
 
 fn main() -> Result<(), ShellpageError> {
@@ -77,7 +80,7 @@ fn main() -> Result<(), ShellpageError> {
     let render_engine = RenderEngine::new_from_config(&config)?;
 
     match &args.action {
-        Some(Action::NewPost {file_name}) => {
+        Some(Action::NewPost { file_name, open }) => {
             let file_name = if let Some(f) = file_name.as_deref() {
                 f
             } else {
@@ -89,7 +92,14 @@ fn main() -> Result<(), ShellpageError> {
             new_file_path.push_str(&new_file_name);
             
             let _file = File::create_new(&new_file_path)?;
-            Command::new("nvim").arg(&new_file_path).status()?;
+
+            if *open {
+                if let Some(ed) = config.editor {
+                    Command::new(ed).arg(&new_file_path).status()?;
+                } else {
+                    return Err(ShellpageError::RequiredConfigField("editor".to_owned()))
+                }
+            }
         },
         Some(Action::Publish { all, file_name, overwrite }) => {
 

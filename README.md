@@ -8,7 +8,7 @@ Check out [this repo](https://github.com/hellbound22/blog) to see the results
 ### Example usage
 ```
 # Creates new post and launches editor
-shellpage new-post "BlogPost" 
+shellpage new-post "BlogPost" -o
 
 # Converts the Markdown files to HTML and apllies templates 
 shellpage publish "BlogPost" 

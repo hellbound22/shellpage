@@ -12,6 +12,8 @@ pub enum ShellpageError {
 
     #[error("required arg `{0}` was not provided")]
     RequiredArg(String),
+    #[error("required field in config file `{0}` is required")]
+    RequiredConfigField(String),
 
     #[error("file `{0}` was not found")]
     FileNotFound(String),
