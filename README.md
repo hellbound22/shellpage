@@ -8,17 +8,19 @@ Check out [this repo](https://github.com/hellbound22/blog) to see the results
 ### Example usage
 ```
 # Creates new post and launches editor
-shellpage -c config.toml new-post "BlogPost" 
+shellpage new-post "BlogPost" 
 
 # Converts the Markdown files to HTML and apllies templates 
-shellpage -c config.toml publish "BlogPost" 
+shellpage publish "BlogPost" 
 
 # Updates index.html with the full list of blog posts
-shellpage -c config.toml update-index
+shellpage update-index
 ```
 
 ### Example config file
 ```toml
+# config.toml
+
 _sign_name = "John"
 repo_path = "/home/user/blog/"
 md_storage = "/home/user/blog/md/"

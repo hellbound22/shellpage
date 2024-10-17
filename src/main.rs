@@ -10,6 +10,7 @@ use errors::ShellpageError;
 use fs_utils::*;
 use render::RenderEngine;
 
+use std::env;
 use std::{fs::File, io::Read};
 use std::process::Command;
 
@@ -53,10 +54,22 @@ pub struct ConfigFile {
 fn main() -> Result<(), ShellpageError> {
     let args = Cli::parse();
 
-    let mut config_contents = String::new();
-    let mut config_file = File::open(args.config.as_deref().unwrap())?;
+    let config_contents = if let Some(a) = args.config.as_deref() {
+        let mut s = String::new();
+        let mut config_file = File::open(a)?;
+        config_file.read_to_string(&mut s)?;
 
-    config_file.read_to_string(&mut config_contents)?;
+        s
+    } else {
+        let path = env::current_dir()?;
+
+        let mut s = String::new();
+        let mut config_file = File::open(format!("{}/config.toml", path.to_str().unwrap()))?;
+        config_file.read_to_string(&mut s)?;
+
+        s
+    };
+
 
     let config: ConfigFile = toml::from_str(&config_contents)?;
 
